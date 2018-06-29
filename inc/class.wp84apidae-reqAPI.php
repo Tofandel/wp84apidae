@@ -1,54 +1,65 @@
 <?php
 class WP84ApidaeReqAPI{
     /**
-     * retourne le détail d'un objet touristique
-     * @param type $id identifiant de l'objet
-     * @param type $fields champs retournés
-     * @param type $locale langues demandées
-     * @param type $bypass paramètre supplémentaires (prioritaires)
-     * @return type string JSON 
-     */
-    public static function getOBT($id,$fields,$locale,$bypass){
-        $qover=array();
-        if($bypass != ''){
-            parse_str($bypass,$qover);
-        }
-        $basepay= json_decode(get_option('wp84apidae_params', json_encode(array())),true);
-            $aRK=array('idproj'=>'projetId','apikey'=>'apiKey');
-            $query=array();
-            foreach ($basepay as $ky=>$vl){
-                if(in_array($ky,array_keys($aRK))){
-                    $query[$aRK[$ky]]=$vl;
-                }else{
-                    $query[$ky]=$vl;
-                }
-            }
-        if($fields!=''){
-            $query['responseFields']=$fields;
-        }
-        $query['locales']=$locale;
-        $mquery= array_merge($query, $qover);
-        $url=sprintf('http://api.apidae-tourisme.com/api/v002/objet-touristique/get-by-id/%d/?',$id).http_build_query($mquery);  
-        $md = md5($url);
-        $output =self::getCache($md);
-        if ($output === false){
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $url); curl_setopt($ch, CURLOPT_URL, $url); 
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_TIMEOUT,5);
-        $isValid=!curl_errno($ch);
-        $output = curl_exec($ch);
-        curl_close($ch);
-        self::setCache($md, $output);
-        }else{
-            $isValid=true;
-        }
-        $ret=false;
-        if($isValid===true){
-            $ret = $output;
-        }
-        return $ret;
-    }
+	 * retourne le détail d'un objet touristique
+	 *
+	 * @param int $id identifiant de l'objet
+	 * @param array $fields champs retournés
+	 * @param string $locale langues demandées
+	 * @param string $bypass paramètre supplémentaires (prioritaires)
+	 *
+	 * @return array
+	 */
+	public static function getOBT( $id, $fields, $locale, $bypass ) {
+		$qover = array();
+		if ( $bypass != '' ) {
+			parse_str( $bypass, $qover );
+		}
+		$basepay = json_decode( get_option( 'wp84apidae_params', json_encode( array() ) ), true );
+		$aRK     = array( 'idproj' => 'projetId', 'apikey' => 'apiKey' );
+		$query   = array();
+		foreach ( $basepay as $ky => $vl ) {
+			if ( in_array( $ky, array_keys( $aRK ) ) ) {
+				$query[ $aRK[ $ky ] ] = $vl;
+			} else {
+				$query[ $ky ] = $vl;
+			}
+		}
+		if ( $fields != '' ) {
+			$query['responseFields'] = $fields;
+		}
+		$query['locales'] = $locale;
+		$mquery           = array_merge( $query, $qover );
+		$url              = sprintf( 'https://api.apidae-tourisme.com/api/v002/objet-touristique/get-by-id/%d/?', $id ) . http_build_query( $mquery );
+		$md      = md5( $url );
+		$cache  = self::getCache( $md );
+		$isValid = true;
+		if ( $cache === false ) {
+			$ch = curl_init();
+			curl_setopt( $ch, CURLOPT_URL, $url );
+			curl_setopt( $ch, CURLOPT_RETURNTRANSFER, 1 );
+			curl_setopt( $ch, CURLOPT_TIMEOUT, 15 );
+			$isValid = ! curl_errno( $ch );
+			$rep  = curl_exec( $ch );
+			curl_close( $ch );
+			$rep = json_decode( $rep, true );
+		} else {
+			$rep = $cache;
+		}
+
+		if ( $isValid === true ) {
+			if ( is_array( $rep ) ) {
+				if ( $cache === false ) {
+					self::setCache( $md, $rep);
+				}
+				return $rep;
+			} else {
+				return array();
+			}
+		} else {
+			return array();
+		}
+	}
     /**
      * retourne une cahine de caractère aléatoire de 8 caractères de longueur dans les chiffres et lettres minuscules
      * @return string
